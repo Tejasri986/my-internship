@@ -7,19 +7,32 @@ if(!isset($_SESSION['user'])){
     exit();
 }
 
+if($_SESSION['role'] != 'admin'){
+    die("<div class='container mt-4'><div class='alert alert-danger'>❌ Access Denied! Only admins can edit posts.</div><a href='index.php'>Go Back</a></div>");
+}
+
 $id = $_GET['id'];
-$result = mysqli_query($conn, "SELECT * FROM posts WHERE id=$id");
-$post = mysqli_fetch_assoc($result);
+$stmt = $conn->prepare("SELECT * FROM posts WHERE id = ?");
+$stmt->bind_param("i", $id);
+$stmt->execute();
+$result = $stmt->get_result();
+$post = $result->fetch_assoc();
+
+$error = '';
 
 if($_SERVER['REQUEST_METHOD'] == 'POST'){
-    $title = mysqli_real_escape_string($conn, $_POST['title']);
-    $content = mysqli_real_escape_string($conn, $_POST['content']);
-    
-    $sql = "UPDATE posts SET title='$title', content='$content' WHERE id=$id";
-    
-    if(mysqli_query($conn, $sql)){
-        header("Location: index.php");
-        exit();
+    $title = trim($_POST['title']);
+    $content = trim($_POST['content']);
+
+    if(empty($title) || empty($content)){
+        $error = "All fields are required!";
+    } else {
+        $stmt = $conn->prepare("UPDATE posts SET title=?, content=? WHERE id=?");
+        $stmt->bind_param("ssi", $title, $content, $id);
+        if($stmt->execute()){
+            header("Location: index.php");
+            exit();
+        }
     }
 }
 ?>
@@ -49,6 +62,9 @@ if($_SERVER['REQUEST_METHOD'] == 'POST'){
     <div class="container">
         <div class="card">
             <h2 class="mb-4">✏️ Edit Post</h2>
+            <?php if($error): ?>
+                <div class="alert alert-danger"><?php echo $error; ?></div>
+            <?php endif; ?>
             <form method="POST">
                 <input type="text" name="title" class="form-control" value="<?php echo $post['title']; ?>" required>
                 <textarea name="content" class="form-control" rows="6" required><?php echo $post['content']; ?></textarea>

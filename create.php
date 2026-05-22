@@ -7,15 +7,21 @@ if(!isset($_SESSION['user'])){
     exit();
 }
 
+$error = '';
+
 if($_SERVER['REQUEST_METHOD'] == 'POST'){
-    $title = mysqli_real_escape_string($conn, $_POST['title']);
-    $content = mysqli_real_escape_string($conn, $_POST['content']);
-    
-    $sql = "INSERT INTO posts (title, content) VALUES ('$title', '$content')";
-    
-    if(mysqli_query($conn, $sql)){
-        header("Location: index.php");
-        exit();
+    $title = trim($_POST['title']);
+    $content = trim($_POST['content']);
+
+    if(empty($title) || empty($content)){
+        $error = "All fields are required!";
+    } else {
+        $stmt = $conn->prepare("INSERT INTO posts (title, content) VALUES (?, ?)");
+        $stmt->bind_param("ss", $title, $content);
+        if($stmt->execute()){
+            header("Location: index.php");
+            exit();
+        }
     }
 }
 ?>
@@ -45,6 +51,9 @@ if($_SERVER['REQUEST_METHOD'] == 'POST'){
     <div class="container">
         <div class="card">
             <h2 class="mb-4">✍️ Create New Post</h2>
+            <?php if($error): ?>
+                <div class="alert alert-danger"><?php echo $error; ?></div>
+            <?php endif; ?>
             <form method="POST">
                 <input type="text" name="title" class="form-control" placeholder="Post Title" required>
                 <textarea name="content" class="form-control" placeholder="Write your content here..." rows="6" required></textarea>
